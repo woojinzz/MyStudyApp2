@@ -1,0 +1,191 @@
+package com.cms.mystudyapp;
+
+import android.content.ContentValues;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.EditText;
+import android.widget.Switch;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+public class Ex28FriendEditActivity extends AppCompatActivity {
+    Switch swSex;
+    TextView tvSex;
+
+    EditText etName, etHp, etAddr, etAge;
+
+
+    Button btnEdit, btnFind;
+    //전달할 변수들
+    String sendId, sendPw, sendName, sendHp, selectSex="남자";
+
+
+    static SQLiteDatabase db;
+    static MySQLiteOpenHelperFriends2 helper;
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_ex25_edit);
+        //데이베이스 생성.
+        helper = new MySQLiteOpenHelperFriends2(
+                Ex28FriendEditActivity.this, // 현재 화면의 context
+                "members.db", // 파일명
+                null, // 커서 팩토리
+                1); // 버전 번호
+
+
+        etAddr = (EditText) findViewById(R.id.etAddr);
+        etAge = (EditText) findViewById(R.id.etAge);
+        etName = (EditText) findViewById(R.id.etName);
+        etHp = (EditText) findViewById(R.id.etHp);
+
+        swSex = (Switch) findViewById(R.id.swSex);
+        tvSex = (TextView) findViewById(R.id.tvSex);
+        btnEdit = (Button) findViewById(R.id.btnEdit);
+        btnFind = (Button) findViewById(R.id.btnFind);
+        swSex = findViewById(R.id.swSex);
+        swSex.setOnCheckedChangeListener(new Switch.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+
+                if (isChecked) {
+                    tvSex.setText("여자");
+                    selectSex ="여자";
+                } else {
+                    tvSex.setText("남자");
+                    selectSex = "남자";
+                }
+            }
+        });
+        btnFind.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view)
+            {
+                String findName = etName.getText().toString();
+                if(findName.equals(""))
+                {
+                    Toast.makeText(Ex28FriendEditActivity.this,"이름을 입력하시오.",Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                db = helper.getReadableDatabase(); // db객체를 얻어온다. 읽기 전용
+                Cursor c = db.rawQuery("SELECT * FROM members", null);
+                while (c.moveToNext()) {
+                    int idx = c.getInt(0);
+                    String name = c.getString(1);
+                    String hp = c.getString(2);
+                    String sex = c.getString(3);
+                    String addr = c.getString(4);
+                    String age = c.getString(5);
+                    if(findName.equals(name))
+                    {
+                        etHp.setText(hp);
+                        //tvSex.setText(hp);
+                        if(sex.equals("남자"))
+                        {
+                            swSex.setChecked(false);
+                        }
+                        else
+                        {
+                            swSex.setChecked(true);
+                        }
+                        etAddr.setText(addr);
+                        etAge.setText(age);
+                        break;
+                    }
+
+                }
+                c.close();
+                db.close();
+            }
+        });
+        btnEdit.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view)
+            {
+                String name = etName.getText().toString();
+                String hp = etHp.getText().toString();
+                String addr = etAddr.getText().toString();
+                String findName = etName.getText().toString();
+
+                if(name.equals("")){
+                    Toast.makeText(Ex28FriendEditActivity.this,"이름을 입력하시오.",Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if(hp.equals("")){
+                    Toast.makeText(Ex28FriendEditActivity.this,"연락처를 입력하시오.",Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if(addr.equals("")){
+                    Toast.makeText(Ex28FriendEditActivity.this,"주소를 입력하시오.",Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if(etAge.getText().toString().equals("")){
+                    Toast.makeText(Ex28FriendEditActivity.this,"나이를 입력하시오.",Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                //공백체크가 다 되었으면 나이는 숫자로 변환
+                int age = Integer.parseInt(etAge.getText().toString());
+
+                //리스트뷰 어댑터에 처리하는부분...
+                for(int i=0; i<Ex28RecyclerViewFriends.adapter.getItemCount();i++)
+                {
+                    //Log.d("아이템값체크","아아템:"+Ex25FriendsListActivity.adapter.items.get(i).getName());
+                    if(findName.equals(Ex28RecyclerViewFriends.adapter.itemData.get(i).getName()))
+                    {
+
+                        //값자리 초기화
+                        Ex28RecyclerViewFriends.adapter.itemData.get(i).setName(name);
+                        Ex28RecyclerViewFriends.adapter.itemData.get(i).setHp(hp);
+                        Ex28RecyclerViewFriends.adapter.itemData.get(i).setAddr(addr);
+                        Ex28RecyclerViewFriends.adapter.itemData.get(i).setAge(age);
+                        if("남자".equals(Ex28RecyclerViewFriends.adapter.itemData.get(i).getSex()))
+                        {
+                            Ex28RecyclerViewFriends.adapter.itemData.get(i).setSex(selectSex);
+                        }
+                        else {
+                            Ex28RecyclerViewFriends.adapter.itemData.get(i).setSex(selectSex);
+                        }
+                        //디비에 수정요청
+                        update(name,hp,selectSex,addr,age);
+                    }
+                }
+
+                //값자리 초기화
+                etName.setText("");
+                etHp.setText("");
+                etAddr.setText("");
+                etAge.setText("");
+                Toast.makeText(Ex28FriendEditActivity.this,"수정완료!",Toast.LENGTH_SHORT).show();
+                //메인에 있는 리스트뷰에 변화가 생겨서 갱신.
+                Ex28RecyclerViewFriends.adapter.notifyDataSetChanged();
+            }
+        });
+    }
+
+    // update
+    public void update(String name,String hp,String sex, String addr, int age) {
+        db = helper.getWritableDatabase(); //db 객체를 얻어온다. 쓰기가능
+
+        ContentValues values = new ContentValues();
+        //values.put("name", name);
+        values.put("hp", hp);
+        values.put("sex", sex);
+        values.put("addr", addr);
+        values.put("age", age);
+        db.update("members", values, "name='"+name+"'", null);
+        db.close();
+
+        Toast.makeText(getApplicationContext(), name+"의 정보가 수정되었습니다.", Toast.LENGTH_SHORT).show();
+        //수정완료후 초기화
+        etName.setText("");
+        etHp.setText("");
+        etAddr.setText("");
+        etAge.setText("");
+    }
+}
